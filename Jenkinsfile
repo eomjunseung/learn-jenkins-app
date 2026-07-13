@@ -33,8 +33,15 @@ pipeline {
             steps {
                 sh '''
                     npm install serve
-                    node_modules/.bin/serve -s build & sleep 10
+                    # 서버 실행 및 PID 저장
+                    npx serve -s build > /dev/null 2>&1 &
+                    SERVER_PID=$!
+                    
+                    # 테스트 실행
                     npx playwright test --reporter=html
+                    
+                    # 테스트 완료 후 서버 종료
+                    kill $SERVER_PID
                 '''
             }
         }
