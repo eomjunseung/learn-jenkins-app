@@ -7,6 +7,7 @@ pipeline {
     }
     environment {
         NETLIFY_SITE_ID = '8fe2b9d3-04ba-457d-bbe3-5932b368db4a'
+        NETLIFY_AUTH_TOKEN = credentials('netlify-token')
     }
     stages {
         stage('Build1') {
@@ -54,6 +55,7 @@ pipeline {
                     npm install netlify-cli@20.1.1
                     node_modules/.bin/netlify --version
                     echo "프로젝트 배포중.. 사이트아이디 : $NETLIFY_SITE_ID"
+                    node_modules/.bin/netlify status
                 '''
             }
         }
