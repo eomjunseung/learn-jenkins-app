@@ -61,6 +61,13 @@ pipeline {
                 '''
             }
         }
+        stage(Approval){
+            steps{
+                timeout(1) {
+                    input ' 운영 환경에 배포할까요?'
+                }
+            }
+        }
 
         stage('Deploy prod') {
             steps {
