@@ -20,6 +20,7 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'my-aws', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
                     sh'''
+                        export AWS_DEFAULT_REGION=ap-northeast-2
                         aws --version
                         aws s3 ls 
                     '''
