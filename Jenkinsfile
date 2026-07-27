@@ -14,6 +14,7 @@ pipeline {
 
     stages {
         
+
         stage('Build') {
             agent {
                 docker { 
@@ -38,33 +39,29 @@ pipeline {
                 docker { 
                     image 'amazon/aws-cli'
                     reuseNode true
-                    // ★ 수정 1: Docker 소켓 마운트 및 root 권한 부여
                     args "-u root --entrypoint='' -v /var/run/docker.sock:/var/run/docker.sock"
                 }
             }
             steps {
-                // ★ 수정 2: ECR 로그인 및 Push를 위해 이 스테이지에도 크리덴셜 바인딩 추가
-                withCredentials([usernamePassword(credentialsId: 'my-aws', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
-                    sh '''
-                        export AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION
-                        
-                        yum install -y docker git
-                        
-                        # 애플 실리콘칩(M1,M2 등) 사용자는 해당 옵션 붙이기
-                        docker build --platform linux/amd64 -t $AWS_DOCKER_REGISTRY/$APP_NAME:$REACT_APP_VERSION .
-                        
-                        aws ecr get-login-password | docker login --username AWS --password-stdin $AWS_DOCKER_REGISTRY
-                        docker push $AWS_DOCKER_REGISTRY/$APP_NAME:$REACT_APP_VERSION
-                    '''
-                }
+                sh '''
+                    yum install -y docker
+                    # 애플 실리콘칩(M1,M2 등) 사용자는 해당 옵션 붙이기
+                    docker build --platform linux/amd64 -t  $AWS_DOCKER_REGISTRY/$APP_NAME:$REACT_APP_VERSION .
+                    aws ecr get-login-password | docker login --username AWS --password-stdin $AWS_DOCKER_REGISTRY
+                    docker push $AWS_DOCKER_REGISTRY/$APP_NAME:$REACT_APP_VERSION
+                '''
             }
         }
+
 
         stage('Deploy to AWS') {
             agent {
                 docker { 
                     image 'amazon/aws-cli'
+                    // aws-cli 이미지는 기본적으로 실행 후 바로 종료되므로 엔트리포인트 무력화
                     reuseNode true
+                
+                    // jq 설치를 위하여 root 계정으로 변경
                     args "-u root --entrypoint=''" 
                 }
             }
@@ -81,12 +78,15 @@ pipeline {
 
                         echo $LATEST_TD_REVISION
 
-                        aws ecs update-service --cluster $AWS_ECS_CLUSTER --service $AWS_ECS_SERVICE_PROD --task-definition $AWS_ECS_TD_PROD:$LATEST_TD_REVISION
+                        aws ecs register-task-definition --cli-input-json file://aws/task-definition-prod.json | jq '.taskDefinition.revision'
+                        aws ecs update-service --cluster $AWS_ECS_CLUSTER  --service $AWS_ECS_SERVICE_PROD --task-definition $AWS_ECS_TD_PROD:$LATEST_TD_REVISION
 
-                        aws ecs wait services-stable --cluster $AWS_ECS_CLUSTER --services $AWS_ECS_SERVICE_PROD
+                         aws ecs wait services-stable --cluster $AWS_ECS_CLUSTER --services $AWS_ECS_SERVICE_PROD
                     '''
                 }
             }
         }
+        
+
     }
 }
