@@ -22,6 +22,7 @@ pipeline {
                         export AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION
                         aws --version
                         aws ecs register-task-definition --cli-input-json file://aws/task-definition-prod.json
+                        aws ecs update-service --cluster decent-bee-255jix --service LearnJenkinsApp-Service-Prod --task-definition LearnJenkinsApp-TaskDefinition-Prod:2
                     '''
                 }
             }
