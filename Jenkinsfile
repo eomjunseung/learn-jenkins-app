@@ -10,6 +10,46 @@ pipeline {
     }
 
     stages {
+        
+
+        stage('Build') {
+            agent {
+                docker { 
+                    image 'mcr.microsoft.com/playwright:v1.39.0-jammy' 
+                    reuseNode true
+                }
+            }
+            steps {
+                sh '''
+                    echo '빌드 시작..'
+                    node --version
+                    npm --version
+                    npm ci
+                    npm run build
+                '''
+            }
+        }
+        
+        // 빌드 이후에 수행
+        stage('Build Docker image') {
+            agent {
+                docker { 
+                    image 'amazon/aws-cli'
+                    reuseNode true
+                    args "-u root --entrypoint='' -v /var/run/docker.sock:/var/run/docker.sock"
+                }
+            }
+            steps {
+                sh '''
+                    yum install -y docker
+                    # 애플 실리콘칩(M1,M2 등) 사용자는 해당 옵션 붙이기
+                    docker build --platform linux/amd64 -t myjenkinsapp .
+                    # docker build -t myjenkinsapp .
+                '''
+            }
+        }
+
+
         stage('Deploy to AWS') {
             agent {
                 docker { 
@@ -42,25 +82,6 @@ pipeline {
                 }
             }
         }
-
-        stage('Build') {
-            agent {
-                docker { 
-                    image 'mcr.microsoft.com/playwright:v1.39.0-jammy' 
-                    reuseNode true
-                }
-            }
-            steps {
-                sh '''
-                    echo '빌드 시작..'
-                    node --version
-                    npm --version
-                    npm ci
-                    npm run build
-                '''
-            }
-        }
-
         
 
     }
